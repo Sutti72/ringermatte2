@@ -1,27 +1,34 @@
 import { useState, useEffect } from "react";
+import { supabase } from "./supabaseClient";
 
 function App() {
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [reservations, setReservations] = useState([]);
 
+  // Alle Reservationen beim Laden holen
   useEffect(() => {
-    fetch("/api/reservations")
-      .then(res => res.json())
-      .then(data => setReservations(data));
+    fetchReservations();
   }, []);
+
+  const fetchReservations = async () => {
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("*")
+      .order("id", { ascending: true });
+    if (!error) setReservations(data);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch("/api/reservations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, date }),
-    });
-    const data = await res.json();
-    setReservations(prev => [...prev, data.reservation]);
-    setName("");
-    setDate("");
+    const { data, error } = await supabase
+      .from("reservations")
+      .insert([{ name, date }]);
+    if (!error) {
+      setReservations(prev => [...prev, data[0]]);
+      setName("");
+      setDate("");
+    }
   };
 
   return (
@@ -34,8 +41,8 @@ function App() {
       </form>
 
       <ul>
-        {reservations.map((r, i) => (
-          <li key={i}>{r.name} – {r.date}</li>
+        {reservations.map((r) => (
+          <li key={r.id}>{r.name} – {r.date}</li>
         ))}
       </ul>
     </div>
