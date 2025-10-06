@@ -1,4 +1,3 @@
-
 // src/App.js
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
@@ -7,80 +6,76 @@ export default function App() {
   const [reservations, setReservations] = useState([]);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // Alle Reservationen laden & Realtime-Subscription einrichten
-  useEffect(() => {
-    fetchReservations();
+  // Funktion, um alle Reservations aus Supabase zu laden
+  const fetchReservations = async () => {
+    const { data, error } = await supabase.from("reservations").select("*").order("id");
+    if (error) console.error("Fehler beim Laden:", error);
+    else setReservations(data);
+  };
 
-    const subscription = supabase
-      .channel('public:reservations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
-        fetchReservations(); // Liste neu laden bei Änderungen
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription); // Clean-up beim Verlassen
-    };
-  }, []);
-
-  async function fetchReservations() {
-    setLoading(true);
-    const { data, error } = await supabase.from("reservations").select("*").order("id", { ascending: true });
-    if (error) {
-      console.error("Fehler beim Laden der Reservationen:", error.message);
-    } else {
-      setReservations(data);
-    }
-    setLoading(false);
-  }
-
-  async function addReservation() {
-    if (!name || !date) return;
-
+  // Neue Reservation hinzufügen
+  const addReservation = async (e) => {
+    e.preventDefault();
     const { data, error } = await supabase
       .from("reservations")
       .insert([{ name, date }]);
-
-    if (error) {
-      console.error("Fehler beim Hinzufügen:", error.message);
-    } else {
+    if (error) console.error("Fehler beim Hinzufügen:", error);
+    else {
       setName("");
       setDate("");
-      // fetchReservations(); // Nicht nötig, Realtime übernimmt
+      // fetchReservations(); // nicht nötig, Realtime kümmert sich darum
     }
-  }
+  };
+
+  useEffect(() => {
+    fetchReservations(); // initial laden
+
+    // Realtime-Subscription einrichten
+    const subscription = supabase
+      .from("reservations")
+      .on("INSERT", (payload) => {
+        setReservations((prev) => [...prev, payload.new]);
+      })
+      .subscribe();
+
+    // Aufräumen bei unmount
+    return () => {
+      supabase.removeSubscription(subscription);
+    };
+  }, []);
 
   return (
-    <div style={{ maxWidth: "600px", margin: "2rem auto", fontFamily: "sans-serif" }}>
-      <h1>Reservierungen</h1>
+    <div style={{ maxWidth: "600px", margin: "auto", padding: "20px" }}>
+      <h1>Reservations</h1>
 
-      <div style={{ marginBottom: "1rem" }}>
+      <form onSubmit={addReservation} style={{ marginBottom: "20px" }}>
         <input
           type="text"
           placeholder="Name"
           value={name}
-          onChange={e => setName(e.target.value)}
-          style={{ padding: "0.5rem", marginRight: "0.5rem" }}
+          onChange={(e) => setName(e.target.value)}
+          required
+          style={{ marginRight: "10px" }}
         />
         <input
           type="date"
           value={date}
-          onChange={e => setDate(e.target.value)}
-          style={{ padding: "0.5rem", marginRight: "0.5rem" }}
+          onChange={(e) => setDate(e.target.value)}
+          required
+          style={{ marginRight: "10px" }}
         />
-        <button onClick={addReservation} style={{ padding: "0.5rem 1rem" }}>Reservieren</button>
-      </div>
+        <button type="submit">Add Reservation</button>
+      </form>
 
-      {loading ? (
-        <p>Lädt...</p>
-      ) : reservations.length === 0 ? (
-        <p>Keine Reservationen vorhanden.</p>
+      {reservations.length === 0 ? (
+        <p>No Reservations yet.</p>
       ) : (
         <ul>
-          {reservations.map(r => (
-            <li key={r.id}>{r.name} – {r.date}</li>
+          {reservations.map((r) => (
+            <li key={r.id}>
+              {r.name} - {r.date}
+            </li>
           ))}
         </ul>
       )}
