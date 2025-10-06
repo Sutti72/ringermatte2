@@ -1,89 +1,89 @@
-import { useState, useEffect } from "react";
+
+// src/App.js
+import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 
-function App() {
+export default function App() {
+  const [reservations, setReservations] = useState([]);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
-  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Reservationen beim Laden holen
+  // Alle Reservationen laden & Realtime-Subscription einrichten
   useEffect(() => {
     fetchReservations();
 
-    // Realtime-Channel für neue Reservationen
-    const channel = supabase
-      .channel("public:reservations")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "reservations" },
-        (payload) => {
-          setReservations((prev) => [...prev, payload.new]);
-        }
-      )
+    const subscription = supabase
+      .channel('public:reservations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
+        fetchReservations(); // Liste neu laden bei Änderungen
+      })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(subscription); // Clean-up beim Verlassen
     };
   }, []);
 
-  const fetchReservations = async () => {
-    const { data, error } = await supabase
-      .from("reservations")
-      .select("*")
-      .order("id", { ascending: true });
+  async function fetchReservations() {
+    setLoading(true);
+    const { data, error } = await supabase.from("reservations").select("*").order("id", { ascending: true });
     if (error) {
-      console.error("Fetch error:", error.message);
-      return;
+      console.error("Fehler beim Laden der Reservationen:", error.message);
+    } else {
+      setReservations(data);
     }
-    setReservations(data);
-  };
+    setLoading(false);
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase
+  async function addReservation() {
+    if (!name || !date) return;
+
+    const { data, error } = await supabase
       .from("reservations")
       .insert([{ name, date }]);
 
     if (error) {
-      console.error("Insert error:", error.message);
-      alert("Fehler: " + error.message);
+      console.error("Fehler beim Hinzufügen:", error.message);
     } else {
       setName("");
       setDate("");
+      // fetchReservations(); // Nicht nötig, Realtime übernimmt
     }
-  };
+  }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Reservationen</h1>
-      <form onSubmit={handleSubmit}>
+    <div style={{ maxWidth: "600px", margin: "2rem auto", fontFamily: "sans-serif" }}>
+      <h1>Reservierungen</h1>
+
+      <div style={{ marginBottom: "1rem" }}>
         <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          type="text"
           placeholder="Name"
-          required
+          value={name}
+          onChange={e => setName(e.target.value)}
+          style={{ padding: "0.5rem", marginRight: "0.5rem" }}
         />
         <input
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
+          onChange={e => setDate(e.target.value)}
+          style={{ padding: "0.5rem", marginRight: "0.5rem" }}
         />
-        <button type="submit">Reservieren</button>
-      </form>
+        <button onClick={addReservation} style={{ padding: "0.5rem 1rem" }}>Reservieren</button>
+      </div>
 
-      <h2>Liste</h2>
-      <ul>
-        {reservations.map((r) => (
-          <li key={r.id}>
-            {r.name} – {r.date}
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <p>Lädt...</p>
+      ) : reservations.length === 0 ? (
+        <p>Keine Reservationen vorhanden.</p>
+      ) : (
+        <ul>
+          {reservations.map(r => (
+            <li key={r.id}>{r.name} – {r.date}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
-
-export default App;
-
