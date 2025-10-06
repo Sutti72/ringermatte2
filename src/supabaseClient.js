@@ -1,8 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+>>>>>>> 39337f3 (Supabase version)
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 
