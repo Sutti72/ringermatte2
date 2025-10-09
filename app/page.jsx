@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 export default function Ringermatte() {
   const [rows] = useState(16);
   const [cols] = useState(16);
+  const [preis] = useState(100); // Preis pro Quadratmeter
   const [reservierungen, setReservierungen] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -28,17 +29,13 @@ export default function Ringermatte() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reservierungen" },
-        (payload) => {
-          console.log("📡 Echtzeit-Update:", payload);
+        () => {
           fetchData(); // Tabelle neu laden
         }
       )
       .subscribe();
 
-    // 🧹 Aufräumen bei Komponentendemontage
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
   }, []);
 
   const toggleCell = (r, c) => {
@@ -73,9 +70,15 @@ export default function Ringermatte() {
   const isReserved = (r, c) =>
     reservierungen.some((res) => res.reihe === r && res.spalte === c);
 
+  // Berechnung der Gesamtsumme
+  const gesamt = selected.size * preis;
+
   return (
     <div style={{ padding: 16 }}>
       <h1>Ringermatte Reservierungen</h1>
+      <p>Preis pro Quadratmeter: {preis} CHF</p>
+      <p>Gesamtsumme der Auswahl: {gesamt} CHF</p>
+
       <div
         style={{
           display: "grid",
