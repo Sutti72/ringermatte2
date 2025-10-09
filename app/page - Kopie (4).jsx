@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,11 +6,12 @@ import { supabase } from "@/lib/supabaseClient";
 export default function Ringermatte() {
   const [rows] = useState(16);
   const [cols] = useState(16);
+  const [preis] = useState(100); // Preis pro m²
   const [reservierungen, setReservierungen] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
-  // ✅ Daten laden und Realtime abonnieren
+  // Daten laden und Realtime abonnieren
   useEffect(() => {
     const fetchData = async () => {
       const { data, error } = await supabase.from("reservierungen").select("*");
@@ -19,26 +19,22 @@ export default function Ringermatte() {
       else setReservierungen(data);
       setLoading(false);
     };
-
     fetchData();
 
-    // 🟢 Realtime-Listener hinzufügen
-    const channel = supabase
-      .channel("reservierungen-realtime")
+    // Realtime Subscription
+    const subscription = supabase
+      .channel("public:reservierungen")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "reservierungen" },
         (payload) => {
-          console.log("📡 Echtzeit-Update:", payload);
-          fetchData(); // Tabelle neu laden
+          console.log("Realtime Update:", payload);
+          fetchData();
         }
       )
       .subscribe();
 
-    // 🧹 Aufräumen bei Komponentendemontage
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(subscription);
   }, []);
 
   const toggleCell = (r, c) => {
@@ -60,11 +56,11 @@ export default function Ringermatte() {
     });
 
     const { error } = await supabase.from("reservierungen").insert(neue);
-    if (error) {
-      alert("Fehler beim Speichern: " + error.message);
-    } else {
+    if (error) alert("Fehler beim Speichern: " + error.message);
+    else {
       alert("Reservierung erfolgreich!");
       setSelected(new Set());
+      // State wird automatisch durch Realtime aktualisiert
     }
   };
 
@@ -73,9 +69,14 @@ export default function Ringermatte() {
   const isReserved = (r, c) =>
     reservierungen.some((res) => res.reihe === r && res.spalte === c);
 
+  const gesamtSumme = selected.size * preis;
+
   return (
     <div style={{ padding: 16 }}>
       <h1>Ringermatte Reservierungen</h1>
+      <p>Preis pro m²: CHF {preis}</p>
+      <p>Ausgewählt: {selected.size} m² / CHF {gesamtSumme}</p>
+
       <div
         style={{
           display: "grid",
@@ -117,18 +118,22 @@ export default function Ringermatte() {
           })
         )}
       </div>
-      <ReservierenForm onSubmit={reservieren} disabled={selected.size === 0} />
+
+      <ReservierenForm
+        onSubmit={reservieren}
+        disabled={selected.size === 0}
+        gesamt={gesamtSumme}
+      />
     </div>
   );
 }
 
-function ReservierenForm({ onSubmit, disabled }) {
+function ReservierenForm({ onSubmit, disabled, gesamt }) {
   const [form, setForm] = useState({
     vorname: "",
     name: "",
     adresse: "",
     ort: "",
-    mail: "",
   });
 
   const handleChange = (e) =>
@@ -137,12 +142,41 @@ function ReservierenForm({ onSubmit, disabled }) {
   return (
     <div style={{ marginTop: 16 }}>
       <h3>Reservierung</h3>
-      <input name="vorname" placeholder="Vorname" value={form.vorname} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
-      <input name="name" placeholder="Name" value={form.name} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
-      <input name="adresse" placeholder="Adresse" value={form.adresse} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
-      <input name="ort" placeholder="Ort" value={form.ort} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
-      <input name="mail" placeholder="E-Mail (optional)" value={form.mail} onChange={handleChange} style={{ display: "block", marginBottom: 12 }} />
-      <button disabled={disabled} onClick={() => onSubmit(form)}>Reservieren</button>
+      <input
+        name="vorname"
+        placeholder="Vorname"
+        value={form.vorname}
+        onChange={handleChange}
+        style={{ display: "block", marginBottom: 8 }}
+      />
+      <input
+        name="name"
+        placeholder="Name"
+        value={form.name}
+        onChange={handleChange}
+        style={{ display: "block", marginBottom: 8 }}
+      />
+      <input
+        name="adresse"
+        placeholder="Adresse"
+        value={form.adresse}
+        onChange={handleChange}
+        style={{ display: "block", marginBottom: 8 }}
+      />
+      <input
+        name="ort"
+        placeholder="Ort"
+        value={form.ort}
+        onChange={handleChange}
+        style={{ display: "block", marginBottom: 8 }}
+      />
+      <p>Gesamtbetrag: CHF {gesamt}</p>
+      <button disabled={disabled} onClick={() => onSubmit(form)}>
+        Reservieren
+      </button>
     </div>
   );
 }
+
+
+
