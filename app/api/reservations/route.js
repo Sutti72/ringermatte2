@@ -1,40 +1,48 @@
 import { supabase } from "../../../lib/supabaseClient";
 
-export async function POST(request) {
-  try {
-    const { name, date, persons } = await request.json();
-
-    const { data, error } = await supabase
-      .from("reservations")
-      .insert([{ name, date, persons }]);
-
-    if (error) throw error;
-
-    return new Response(JSON.stringify({ message: "Reservierung gespeichert", data }), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-}
-
+// GET: Alle Reservierungen abrufen
 export async function GET() {
   try {
-    const { data, error } = await supabase.from("reservations").select("*");
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("*")
+      .order("created_at", { ascending: true });
+
     if (error) throw error;
 
     return new Response(JSON.stringify(data), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
+    console.error("GET Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+// POST: Neue Reservierung speichern
+export async function POST(request) {
+  try {
+    const reservation = await request.json();
+
+    const { data, error } = await supabase
+      .from("reservations")
+      .insert([reservation]);
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify(data), {
+      status: 201,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("POST Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
     });
   }
 }
