@@ -1,0 +1,13 @@
+
+Powershell als Administrator starten
+
+Dann Pfad auf PS C:\Daten\Reto\ringermatteapp2>
+wechseln 
+dann mit folgendem Befehl "npm run dev" den Server starten
+
+Anschliessend kann im Browser 
+http://localhost:3000/ringermatte eingegeben werden und sie Seite wird gestartet.
+
+ADMIN_PASSWORD = "rs-sense-2025";
+
+
