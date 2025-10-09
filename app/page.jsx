@@ -11,6 +11,7 @@ export default function Ringermatte() {
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
+  // Daten laden + Realtime Listener
   useEffect(() => {
     const fetchData = async () => {
       const { data, error } = await supabase.from("reservierungen").select("*");
@@ -19,6 +20,27 @@ export default function Ringermatte() {
       setLoading(false);
     };
     fetchData();
+
+    const subscription = supabase
+      .from("reservierungen")
+      .on("*", payload => {
+        setReservierungen(prev => {
+          const newData = [...prev];
+          const index = newData.findIndex(r => r.id === payload.new?.id);
+
+          if (payload.eventType === "INSERT") {
+            newData.push(payload.new);
+          } else if (payload.eventType === "UPDATE" && index !== -1) {
+            newData[index] = payload.new;
+          } else if (payload.eventType === "DELETE" && index !== -1) {
+            newData.splice(index, 1);
+          }
+          return newData;
+        });
+      })
+      .subscribe();
+
+    return () => supabase.removeSubscription(subscription);
   }, []);
 
   const toggleCell = (r, c) => {
@@ -45,8 +67,6 @@ export default function Ringermatte() {
     } else {
       alert("Reservierung erfolgreich!");
       setSelected(new Set());
-      const { data } = await supabase.from("reservierungen").select("*");
-      setReservierungen(data);
     }
   };
 
@@ -55,18 +75,13 @@ export default function Ringermatte() {
   const isReserved = (r, c) =>
     reservierungen.some((res) => res.reihe === r && res.spalte === c);
 
-  const total = selected.size * preis;
+  const totalPrice = selected.size * preis;
 
   return (
     <div style={{ padding: 16 }}>
       <h1>Ringermatte Reservierungen</h1>
-      <p style={{ marginBottom: 12 }}>
-        Preis pro Quadratmeter: <strong>CHF {preis}</strong>
-      </p>
-      <p style={{ marginBottom: 20 }}>
-        Ausgewählte Fläche: <strong>{selected.size} m²</strong> — Gesamtpreis:{" "}
-        <strong>CHF {total}</strong>
-      </p>
+      <p>Preis pro m²: CHF {preis}</p>
+      <p>Ausgewählt: {selected.size} m² – Gesamt: CHF {totalPrice}</p>
 
       <div
         style={{
@@ -110,16 +125,12 @@ export default function Ringermatte() {
         )}
       </div>
 
-      <ReservierenForm
-        onSubmit={reservieren}
-        disabled={selected.size === 0}
-        total={total}
-      />
+      <ReservierenForm onSubmit={reservieren} disabled={selected.size === 0} />
     </div>
   );
 }
 
-function ReservierenForm({ onSubmit, disabled, total }) {
+function ReservierenForm({ onSubmit, disabled }) {
   const [form, setForm] = useState({
     vorname: "",
     name: "",
@@ -139,10 +150,10 @@ function ReservierenForm({ onSubmit, disabled, total }) {
       <input name="adresse" placeholder="Adresse" value={form.adresse} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
       <input name="ort" placeholder="Ort" value={form.ort} onChange={handleChange} style={{ display: "block", marginBottom: 8 }} />
       <input name="mail" placeholder="E-Mail (optional)" value={form.mail} onChange={handleChange} style={{ display: "block", marginBottom: 12 }} />
-      <p><strong>Gesamtpreis: CHF {total}</strong></p>
       <button disabled={disabled} onClick={() => onSubmit(form)}>Reservieren</button>
     </div>
   );
 }
+
 
 
