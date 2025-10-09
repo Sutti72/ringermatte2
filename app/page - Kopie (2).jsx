@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,38 +6,20 @@ import { supabase } from "@/lib/supabaseClient";
 export default function Ringermatte() {
   const [rows] = useState(16);
   const [cols] = useState(16);
+  const [preis] = useState(100);
   const [reservierungen, setReservierungen] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
-  // ✅ Daten laden und Realtime abonnieren
+  // Reservierungen aus Supabase laden
   useEffect(() => {
     const fetchData = async () => {
       const { data, error } = await supabase.from("reservierungen").select("*");
-      if (error) console.error("Fehler beim Laden:", error.message);
+      if (error) console.error("Fehler beim Laden der Reservierungen:", error.message);
       else setReservierungen(data);
       setLoading(false);
     };
-
     fetchData();
-
-    // 🟢 Realtime-Listener hinzufügen
-    const channel = supabase
-      .channel("reservierungen-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reservierungen" },
-        (payload) => {
-          console.log("📡 Echtzeit-Update:", payload);
-          fetchData(); // Tabelle neu laden
-        }
-      )
-      .subscribe();
-
-    // 🧹 Aufräumen bei Komponentendemontage
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const toggleCell = (r, c) => {
@@ -65,6 +46,8 @@ export default function Ringermatte() {
     } else {
       alert("Reservierung erfolgreich!");
       setSelected(new Set());
+      const { data } = await supabase.from("reservierungen").select("*");
+      setReservierungen(data);
     }
   };
 
@@ -146,3 +129,6 @@ function ReservierenForm({ onSubmit, disabled }) {
     </div>
   );
 }
+
+
+
