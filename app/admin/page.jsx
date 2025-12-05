@@ -27,9 +27,9 @@ export default function AdminPage() {
   const exportCSV = () => {
     const header = "Vorname,Name,Reihe,Spalte,Adresse,Ort,Mail\n";
     const rows = reservierungen
-      .map((r) => `${r.vorname},${r.name},${r.reihe},${r.spalte},$(r.adresse),${r.ort},${r.mail}`)
+      .map((r) => `${r.vorname},${r.name},${r.reihe},${r.spalte},${r.adresse},${r.ort},${r.mail}`)
       .join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
+    const blob = new Blob([header + rows], { type: "text/csv" })
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
