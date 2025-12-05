@@ -55,6 +55,7 @@ export default function AdminPage() {
             <th>Name</th>
             <th>Reihe</th>
             <th>Spalte</th>
+            <th>Adresse</th>
             <th>Ort</th>
             <th>Mail</th>
             <th>Aktion</th>
@@ -68,6 +69,7 @@ export default function AdminPage() {
               <td>{r.name}</td>
               <td>{r.reihe}</td>
               <td>{r.spalte}</td>
+              <td>{r.adresse}</td>
               <td>{r.ort}</td>
               <td>{r.mail}</td>
               <td>
